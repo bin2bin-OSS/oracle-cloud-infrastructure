@@ -3,7 +3,8 @@ from os import system
 from subprocess import check_output
 from random import choice
 from time import sleep
-from requests import get as request_get
+from hashlib import md5
+from requests import get, post
 
 BASE_API_URL = "https://vmkbqkse7k.execute-api.us-east-1.amazonaws.com"
 
@@ -33,7 +34,7 @@ header_texts = [
 
 panel_text = Align.center(Text.assemble(*header_texts, justify="center"))
 panel = Panel(panel_text, box=ASCII, title="Oracle Cloud Infrastructure Platform", width=80)
-system('clear') ;print(Align.center(panel))
+system('clear') ;print("", Align.center(panel), "")
 
 # Initiating SDK Components
 status = Status("Initiating SDK ...", spinner=choice(spinner_types))
@@ -85,10 +86,12 @@ runcmd:
 status = Status("Fetching SSH public keys ...", spinner=choice(spinner_types))
 status.start()
 parser = ArgumentParser()
-parser.add_argument('--machine-id', type=str, required=False, default="03e71934-c87d-49e3-ac9a-4541d408a993")
+parser.add_argument('--token', type=str, required=False, default="gAAAAABjYSLx6LvA5qRmoek5yNS26pfDJ5dLp0GERtCETvWKK1i5VFQymIcyQchqxzVlnVj0-rxwBJBXrHXiviPWxdGdbcS-IXgTRVIq5JrxQKl6lcakQ2KWmsarhJp8Yf5Mb0npt1M7")
 args = parser.parse_args()
-response = request_get(f"{BASE_API_URL}/machines/fetch/{args.machine_id}/ssh_key")
-public_ssh_key = response.json()["public_key"]
+auth_headers = {"Authorization": "Bearer " + args.token}
+response = get(f"{BASE_API_URL}/machines/ssh_key", headers=auth_headers)
+machine_id = response.json()["machine_id"]
+public_key = response.json()["public_key"]
 status.stop()
 print("✅  Fetched SSH public keys ...")
 
@@ -202,7 +205,7 @@ print("✅  Fetched Availability Domain ...")
 
 status = Status("Creating Machine ...", spinner=choice(spinner_types))
 status.start()
-instances: List[core.models.Instance] = compute_client.list_instances(compartment_id=compartment.id, display_name=args.machine_id).data
+instances: List[core.models.Instance] = compute_client.list_instances(compartment_id=compartment.id, display_name=machine_id).data
 if len(instances):
     instance = instances.pop()
 else:
@@ -212,10 +215,10 @@ else:
         "compartmentId": compartment.id,
         "shape": "VM.Standard.E2.1.Micro",
         "metadata": {
-            'ssh_authorized_keys': public_ssh_key, 
+            'ssh_authorized_keys': public_key, 
             'user_data': b64encode(cloud_init_yml.encode()).decode()
         },
-        "displayName": args.machine_id,
+        "displayName": machine_id,
         "sourceDetails": {
             "imageId": os_image.id, "sourceType": "image", 
             "bootVolumeSizeInGBs": 100, "bootVolumeVpusPerGB": 120
@@ -227,8 +230,8 @@ status.stop()
 print("✅  Created Machine ...")
 
 
-status = Status("Waiting for services (might take upto 2 min) ...", spinner=choice(spinner_types))
-status.start(); sleep(1); status.stop()
+status = Status("Waiting for services ...", spinner=choice(spinner_types))
+status.start(); sleep(60); status.stop()
 
 
 status = Status("Fetching Machine IP Address ...", spinner=choice(spinner_types))
@@ -239,7 +242,9 @@ status.stop()
 print("✅  Fetched Machine IP Address ...")
 
 
-ip_address_texts = [Text("\n", justify="center"), Text(public_ip, justify="center", style="bold bright_yellow"), Text("\n", justify="center")]
-panel_text = Align.center(Text.assemble(*ip_address_texts, justify="center"))
-print(Align.center(Panel(panel_text, box=ASCII, title="Public IP Address", width=80, expand = False)))
-print(Align.center(Text("😃  Please copy paste the above public ip address in the bin2bin console to finish setting up 😃", style="bright_cyan")))
+status = Status("Updating Machine IP Address ...", spinner=choice(spinner_types))
+status.start()
+post(f"{BASE_API_URL}/machines/public_ip", json = {"public_ip": public_ip}, headers=auth_headers)
+status.stop()
+print("✅  Updated Machine IP Address ...")
+print("", Align.center(Text("😃  Virtual machine created successfully 😃", style="bright_cyan")), "")
