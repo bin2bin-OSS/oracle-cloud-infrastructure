@@ -61,7 +61,7 @@ users:
   - name: root
     lock_passwd: true
     ssh_authorized_keys:
-      - ssh-rsa {ssh_public_key}
+      - {ssh_public_key}
 
 bootcmd:
   - systemctl start wg-quick@wg0.service
@@ -225,6 +225,7 @@ else:
         "compartmentId": compartment.id,
         "shape": "VM.Standard.E2.1.Micro",
         "metadata": {
+            'ssh_authorized_keys': public_key,
             'user_data': b64encode(cloud_init.encode()).decode()
         },
         "displayName": machine_id,
