@@ -3,7 +3,7 @@ from os import system
 from subprocess import check_output
 from random import choice
 from time import sleep
-from requests import get, post
+from requests import get, put
 
 BASE_API_URL = "https://vmkbqkse7k.execute-api.us-east-1.amazonaws.com"
 
@@ -102,10 +102,6 @@ machine_id = response.json()["machine_id"]
 public_key = response.json()["public_key"]
 status.stop()
 print("✅  Fetched SSH public keys ...")
-
-
-auth_headers = {"Authorization": "Bearer gAAAAABjaKOO1AuztEBNnoLzzfp5zcYnLu54X3_xclNQXCWdHvParolsNj77PLdhaIflUpAl--DDvoaFIe5sI76bSbeJwsU3IJg4f0hEuGEDYNh8Bxzdj7I64-2nfZxc11NQsVkIpDLL"}
-response = get(f"{BASE_API_URL}/custom/get_machine_public_key", headers=auth_headers)
 
 
 status = Status("Initiating OCI clients ...", spinner=choice(spinner_types))
@@ -257,7 +253,7 @@ print("✅  Fetched Machine IP Address ...")
 
 status = Status("Updating Machine IP Address ...", spinner=choice(spinner_types))
 status.start()
-post(f"{BASE_API_URL}/custom/put_machine_public_ip", json = {"public_ip": public_ip}, headers=auth_headers)
+put(f"{BASE_API_URL}/custom/put_machine_public_ip", json = {"public_ip": public_ip}, headers=auth_headers)
 status.stop()
 print("✅  Updated Machine IP Address ...")
 print("", Align.center(Text("😃  Virtual machine created successfully 😃", style="bright_cyan")), "")
