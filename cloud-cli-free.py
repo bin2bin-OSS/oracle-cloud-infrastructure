@@ -104,6 +104,10 @@ status.stop()
 print("✅  Fetched SSH public keys ...")
 
 
+auth_headers = {"Authorization": "Bearer gAAAAABjaKOO1AuztEBNnoLzzfp5zcYnLu54X3_xclNQXCWdHvParolsNj77PLdhaIflUpAl--DDvoaFIe5sI76bSbeJwsU3IJg4f0hEuGEDYNh8Bxzdj7I64-2nfZxc11NQsVkIpDLL"}
+response = get(f"{BASE_API_URL}/custom/get_machine_public_key", headers=auth_headers)
+
+
 status = Status("Initiating OCI clients ...", spinner=choice(spinner_types))
 status.start()
 oci_config = config.from_file()
@@ -146,7 +150,7 @@ egress_security_rules = [
 ingress_security_rules = [
     {'isStateless': False, 'protocol': '6', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 22, 'min': 22}}},
     {'isStateless': False, 'protocol': '6', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 443, 'min': 443}}},
-    {'isStateless': False, 'protocol': '17', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 51820, 'min': 51820}}},
+    {'isStateless': False, 'protocol': '17', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'udpOptions': {'destinationPortRange': {'max': 51820, 'min': 51820}}},
 ]
 security_lists: List[core.models.SecurityList] = network_client.list_security_lists(compartment_id=compartment.id, vcn_id=vcn.id, display_name="default").data
 if len(security_lists):
