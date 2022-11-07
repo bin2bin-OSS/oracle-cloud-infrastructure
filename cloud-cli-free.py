@@ -218,7 +218,7 @@ print("✅  Fetched Availability Domain ...")
 
 status = Status("Creating Machine ...", spinner=choice(spinner_types))
 status.start()
-cloud_init = cloud_init_yml.format(ssh_public_key = public_key)
+cloud_init = cloud_init_yml.replace("{ssh_public_key}", public_key)
 instances: List[core.models.Instance] = compute_client.list_instances(compartment_id=compartment.id, display_name=machine_id).data
 if len(instances):
     instance = instances.pop()
