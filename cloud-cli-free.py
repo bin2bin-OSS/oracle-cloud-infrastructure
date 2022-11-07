@@ -69,9 +69,9 @@ bootcmd:
 runcmd:
   - echo 'PermitRootLogin prohibit-password' >> /etc/ssh/sshd_config
   - systemctl restart ssh
-  - echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf && sysctl -p
   - echo "DNSStubListener=no" >> /etc/systemd/resolved.conf
   - systemctl restart systemd-resolved
+  - echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf && sysctl -p
   - apt-get -y install podman wireguard dnsmasq net-tools
   - rm -f /etc/dnsmasq.conf && echo "bind-interfaces" >> /etc/dnsmasq.conf
   - echo "listen-address=0.0.0.0" >> /etc/dnsmasq.conf
@@ -214,6 +214,7 @@ print("✅  Fetched Availability Domain ...")
 
 status = Status("Creating Machine ...", spinner=choice(spinner_types))
 status.start()
+cloud_init = cloud_init_yml.format(ssh_public_key = public_key)
 instances: List[core.models.Instance] = compute_client.list_instances(compartment_id=compartment.id, display_name=machine_id).data
 if len(instances):
     instance = instances.pop()
@@ -224,8 +225,7 @@ else:
         "compartmentId": compartment.id,
         "shape": "VM.Standard.E2.1.Micro",
         "metadata": {
-            'ssh_authorized_keys': public_key, 
-            'user_data': b64encode(cloud_init_yml.encode()).decode()
+            'user_data': b64encode(cloud_init.encode()).decode()
         },
         "displayName": machine_id,
         "sourceDetails": {
