@@ -3,7 +3,6 @@ from os import system
 from subprocess import check_output
 from random import choice
 from time import sleep
-from hashlib import md5
 from requests import get, post
 
 BASE_API_URL = "https://vmkbqkse7k.execute-api.us-east-1.amazonaws.com"
@@ -56,11 +55,20 @@ swap:
   maxsize: 17179869184
 
 package_update: true
+disable_root: false
+
+users:
+  - name: root
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ssh-rsa {ssh_public_key}
 
 bootcmd:
   - systemctl start wg-quick@wg0.service
 
 runcmd:
+  - echo 'PermitRootLogin prohibit-password' >> /etc/ssh/sshd_config
+  - systemctl restart ssh
   - echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf && sysctl -p
   - echo "DNSStubListener=no" >> /etc/systemd/resolved.conf
   - systemctl restart systemd-resolved
@@ -86,10 +94,10 @@ runcmd:
 status = Status("Fetching SSH public keys ...", spinner=choice(spinner_types))
 status.start()
 parser = ArgumentParser()
-parser.add_argument('--token', type=str, required=False, default="gAAAAABjYSLx6LvA5qRmoek5yNS26pfDJ5dLp0GERtCETvWKK1i5VFQymIcyQchqxzVlnVj0-rxwBJBXrHXiviPWxdGdbcS-IXgTRVIq5JrxQKl6lcakQ2KWmsarhJp8Yf5Mb0npt1M7")
+parser.add_argument('--token', type=str, required=True)
 args = parser.parse_args()
 auth_headers = {"Authorization": "Bearer " + args.token}
-response = get(f"{BASE_API_URL}/machines/ssh_key", headers=auth_headers)
+response = get(f"{BASE_API_URL}/custom/get_machine_public_key", headers=auth_headers)
 machine_id = response.json()["machine_id"]
 public_key = response.json()["public_key"]
 status.stop()
@@ -137,7 +145,8 @@ egress_security_rules = [
 ]
 ingress_security_rules = [
     {'isStateless': False, 'protocol': '6', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 22, 'min': 22}}},
-    {'isStateless': False, 'protocol': '6', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 443, 'min': 443}}}
+    {'isStateless': False, 'protocol': '6', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 443, 'min': 443}}},
+    {'isStateless': False, 'protocol': '17', 'source': '0.0.0.0/0', 'sourceType': 'CIDR_BLOCK', 'tcpOptions': {'destinationPortRange': {'max': 51820, 'min': 51820}}},
 ]
 security_lists: List[core.models.SecurityList] = network_client.list_security_lists(compartment_id=compartment.id, vcn_id=vcn.id, display_name="default").data
 if len(security_lists):
@@ -244,7 +253,7 @@ print("✅  Fetched Machine IP Address ...")
 
 status = Status("Updating Machine IP Address ...", spinner=choice(spinner_types))
 status.start()
-post(f"{BASE_API_URL}/machines/public_ip", json = {"public_ip": public_ip}, headers=auth_headers)
+post(f"{BASE_API_URL}/custom/put_machine_public_ip", json = {"public_ip": public_ip}, headers=auth_headers)
 status.stop()
 print("✅  Updated Machine IP Address ...")
 print("", Align.center(Text("😃  Virtual machine created successfully 😃", style="bright_cyan")), "")
